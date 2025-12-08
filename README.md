@@ -1,4 +1,4 @@
-# HP Prime Thermodynamics Suite 🧪🔥
+# HP Prime Thermodynamics Suite 🧪🔥 
 
 A comprehensive suite of high-precision Thermodynamic applications developed for the HP Prime Graphing Calculator using PPL (Prime Programming Language).
 
@@ -89,6 +89,12 @@ A helper tool for using Lee-Kesler Generalized Compressibility Charts manually.
 3.  **Menu Navigation:** Use the touchscreen or numbers to select Models and Calculation Objectives.
 4.  **Inputs:** The apps use Global Variables (`EXPORT`). Once you enter data for a substance (e.g., Water: $Tc=647.1, Pc=220.6$), it stays saved in memory for subsequent calculations, saving you typing time.
 5.  **Escape:** Press `Esc` in menus to go back or exit.
+
+## 📺 YouTube Channel (Coming Soon)
+I recently started a channel dedicated to HP Prime engineering tutorials.
+**Subscribe now to be the first to know when the full video manual for this suite is released!**
+
+[**🔗 Click here to Subscribe**]([SEU_LINK_DO_YOUTUBE_AQUI](https://www.youtube.com/@ocaradaprime))
 
 ## ⚠️ Disclaimer
 
