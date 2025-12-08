@@ -1,0 +1,350 @@
+// ==========================================================
+// CALCULADORA TERMO TITANIUM
+// Modelos: Ideal, VdW, RK, SRK, PR, Virial
+// Funcionalidades: P, T, V e Propriedades
+// ==========================================================
+
+EXPORT G_Pressao, G_Temp, G_Vol, G_Tc, G_Pc, G_Omega;
+
+EXPORT TERMO_TITANIUM()
+BEGIN
+  // --- DECLARAÇÃO DE VARIÁVEIS (Divididas para evitar erros) ---
+  
+  // Controle de Fluxo
+  LOCAL modelo, opcao_calc, iteracao;
+  
+  // Constantes Físicas e Auxiliares
+  LOCAL Rgas, a, b, m, kappa;
+  LOCAL Tr, Pr, alpha, a_alpha;
+  LOCAL B0, B1, B_hat, Denom;
+  
+  // Variáveis para Solvers (Newton)
+  LOCAL V_calc, P_calc, T_calc;
+  LOCAL P_t1, P_t2, Derivada, Erro;
+  
+  // Variáveis para Propriedades
+  LOCAL Z_factor, Beta_exp, Kappa_comp;
+  LOCAL P_base, P_Tplus, P_Vplus;
+  LOCAL dPdT, dPdV, T_orig, V_orig;
+
+  // --- INICIALIZAÇÃO ---
+  Rgas := 83.1446; 
+
+  // Valores Padrão (Água)
+  IF G_Pressao == 0 THEN G_Pressao := 1.0; END;
+  IF G_Temp == 0    THEN G_Temp := 373.15; END;
+  IF G_Vol == 0     THEN G_Vol := 30000.0; END;
+  IF G_Tc == 0      THEN G_Tc := 647.1; END;
+  IF G_Pc == 0      THEN G_Pc := 220.6; END;
+  IF G_Omega == 0   THEN G_Omega := 0.344; END;
+
+  // --- LOOP PRINCIPAL ---
+  WHILE 1 DO
+  
+    // MENU PRINCIPAL
+    CHOOSE(modelo, "EOS TITANIUM: Escolha o Modelo", 
+           "1. Gás Ideal", 
+           "2. Van der Waals",
+           "3. Redlich-Kwong (RK)",
+           "4. SRK",
+           "5. Peng-Robinson (PR)",
+           "6. Virial (Pitzer-Curl)",
+           "7. Sair"); 
+           
+    IF modelo == 0 OR modelo == 7 THEN BREAK; END;
+
+    // MENU OBJETIVO
+    CHOOSE(opcao_calc, "O que calcular?", 
+           "1. Calcular Pressão (P)", 
+           "2. Calcular Temperatura (T)",
+           "3. Calcular Volume (V)",
+           "4. Propriedades (Z, Beta, Kappa)");
+           
+    IF opcao_calc == 0 THEN CONTINUE; END;
+
+    // --- INPUTS DE DADOS ---
+    // Bloco P, V e Propriedades
+    IF opcao_calc == 1 OR opcao_calc == 3 OR opcao_calc == 4 THEN
+       IF INPUT({G_Pressao, G_Temp, G_Vol, G_Tc, G_Pc, G_Omega}, "Dados de Entrada", 
+                {"P(bar)","T(K)","V(cm3)","Tc","Pc","Omega"})==0 THEN CONTINUE; END;
+    END;
+    
+    // Bloco T
+    IF opcao_calc == 2 THEN
+       IF INPUT({G_Pressao, G_Vol, G_Tc, G_Pc, G_Omega}, "Dados para T", 
+                {"P","V","Tc","Pc","Omega"})==0 THEN CONTINUE; END;
+    END;
+
+    // ==============================================================
+    // LÓGICA POR MODELO
+    // ==============================================================
+    
+    // --- 1. GÁS IDEAL ---
+    IF modelo == 1 THEN
+       IF opcao_calc == 1 THEN G_Pressao := Rgas * G_Temp / G_Vol; END;
+       IF opcao_calc == 2 THEN G_Temp := G_Pressao * G_Vol / Rgas; END;
+       IF opcao_calc == 3 OR opcao_calc == 4 THEN G_Vol := Rgas * G_Temp / G_Pressao; END;
+    END;
+
+    // --- 2. VAN DER WAALS ---
+    IF modelo == 2 THEN
+       a := 27 * (Rgas*G_Tc)^2 / (64 * G_Pc); 
+       b := (Rgas * G_Tc) / (8 * G_Pc);
+       
+       IF opcao_calc == 1 THEN G_Pressao := (Rgas*G_Temp)/(G_Vol-b) - a/(G_Vol*G_Vol); END;
+       IF opcao_calc == 2 THEN G_Temp := (G_Pressao + a/(G_Vol*G_Vol)) * (G_Vol - b) / Rgas; END;
+       
+       IF opcao_calc == 3 OR opcao_calc == 4 THEN
+          V_calc := Rgas * G_Temp / G_Pressao;
+          FOR iteracao FROM 1 TO 50 DO
+             P_calc := (Rgas * G_Temp) / (V_calc - b) - a / (V_calc*V_calc);
+             Derivada := -1*(Rgas*G_Temp)/((V_calc-b)^2) + (2*a)/(V_calc^3);
+             V_calc := V_calc - (P_calc - G_Pressao) / Derivada;
+             IF ABS(P_calc - G_Pressao) < 0.00001 THEN BREAK; END;
+          END;
+          G_Vol := V_calc;
+       END;
+    END;
+
+    // --- 3. REDLICH-KWONG (RK) ---
+    IF modelo == 3 THEN
+       a := 0.42748*(Rgas^2)*(G_Tc^2.5)/G_Pc; 
+       b := 0.08664*Rgas*G_Tc/G_Pc;
+       
+       IF opcao_calc == 1 THEN G_Pressao := (Rgas*G_Temp)/(G_Vol-b) - a/(SQRT(G_Temp)*G_Vol*(G_Vol+b)); END;
+       
+       // RK Temperatura (Solver)
+       IF opcao_calc == 2 THEN
+          T_calc := G_Pressao * G_Vol / Rgas;
+          FOR iteracao FROM 1 TO 50 DO
+             P_t1 := (Rgas*T_calc)/(G_Vol-b) - a/(SQRT(T_calc)*G_Vol*(G_Vol+b));
+             P_t2 := (Rgas*(T_calc+0.01))/(G_Vol-b) - a/(SQRT(T_calc+0.01)*G_Vol*(G_Vol+b));
+             Derivada := (P_t2 - P_t1) / 0.01;
+             T_calc := T_calc - (P_t1 - G_Pressao) / Derivada;
+             IF ABS(P_t1 - G_Pressao) < 0.0001 THEN BREAK; END;
+          END;
+          G_Temp := T_calc;
+       END;
+       
+       IF opcao_calc == 3 OR opcao_calc == 4 THEN
+          V_calc := Rgas * G_Temp / G_Pressao;
+          FOR iteracao FROM 1 TO 50 DO
+             P_calc := (Rgas*G_Temp)/(V_calc-b) - a/(SQRT(G_Temp)*V_calc*(V_calc+b));
+             Derivada := -1*(Rgas*G_Temp)/((V_calc - b)^2) + (a / SQRT(G_Temp)) * (2*V_calc + b) / ((V_calc * (V_calc + b))^2);
+             V_calc := V_calc - (P_calc - G_Pressao) / Derivada;
+             IF ABS(P_calc - G_Pressao) < 0.00001 THEN BREAK; END;
+          END;
+          G_Vol := V_calc;
+       END;
+    END;
+
+    // --- 4. SRK ---
+    IF modelo == 4 THEN
+       a := 0.42748 * (Rgas*G_Tc)^2 / G_Pc; 
+       b := 0.08664 * (Rgas*G_Tc) / G_Pc;
+       m := 0.480 + 1.574*G_Omega - 0.176*G_Omega^2;
+       
+       IF opcao_calc == 1 THEN 
+          Tr := G_Temp / G_Tc; alpha := (1 + m * (1 - SQRT(Tr)))^2;
+          G_Pressao := (Rgas*G_Temp)/(G_Vol-b) - (a*alpha)/(G_Vol*(G_Vol+b)); 
+       END;
+       
+       // SRK Temperatura (Solver)
+       IF opcao_calc == 2 THEN
+          T_calc := G_Pressao * G_Vol / Rgas;
+          FOR iteracao FROM 1 TO 50 DO
+             // T atual
+             Tr := T_calc / G_Tc; alpha := (1 + m * (1 - SQRT(Tr)))^2;
+             P_t1 := (Rgas*T_calc)/(G_Vol-b) - (a*alpha)/(G_Vol*(G_Vol+b));
+             // T + 0.01
+             Tr := (T_calc+0.01) / G_Tc; alpha := (1 + m * (1 - SQRT(Tr)))^2;
+             P_t2 := (Rgas*(T_calc+0.01))/(G_Vol-b) - (a*alpha)/(G_Vol*(G_Vol+b));
+             
+             Derivada := (P_t2 - P_t1) / 0.01;
+             T_calc := T_calc - (P_t1 - G_Pressao) / Derivada;
+             IF ABS(P_t1 - G_Pressao) < 0.0001 THEN BREAK; END;
+          END;
+          G_Temp := T_calc;
+       END;
+       
+       IF opcao_calc == 3 OR opcao_calc == 4 THEN
+          Tr := G_Temp / G_Tc; alpha := (1 + m * (1 - SQRT(Tr)))^2; a_alpha := a * alpha;
+          V_calc := Rgas * G_Temp / G_Pressao;
+          FOR iteracao FROM 1 TO 50 DO
+             P_calc := (Rgas * G_Temp)/(V_calc - b) - a_alpha/(V_calc*(V_calc + b));
+             Derivada := -1*(Rgas*G_Temp)/((V_calc - b)^2) + (a_alpha * (2*V_calc + b)) / ((V_calc * (V_calc + b))^2);
+             V_calc := V_calc - (P_calc - G_Pressao) / Derivada;
+             IF ABS(P_calc - G_Pressao) < 0.00001 THEN BREAK; END;
+          END;
+          G_Vol := V_calc;
+       END;
+    END;
+
+    // --- 5. PENG-ROBINSON (PR) ---
+    IF modelo == 5 THEN
+       a := 0.45724 * (Rgas*G_Tc)^2 / G_Pc; 
+       b := 0.07780 * (Rgas*G_Tc) / G_Pc;
+       kappa := 0.37464 + 1.54226*G_Omega - 0.26992*G_Omega^2;
+       
+       IF opcao_calc == 1 THEN 
+          Tr := G_Temp / G_Tc; alpha := (1 + kappa * (1 - SQRT(Tr)))^2;
+          G_Pressao := (Rgas*G_Temp)/(G_Vol-b) - (a*alpha) / (G_Vol^2 + 2*b*G_Vol - b^2); 
+       END;
+       
+       // PR Temperatura (Solver)
+       IF opcao_calc == 2 THEN
+          T_calc := G_Pressao * G_Vol / Rgas;
+          FOR iteracao FROM 1 TO 50 DO
+             Tr := T_calc / G_Tc; alpha := (1 + kappa * (1 - SQRT(Tr)))^2;
+             P_t1 := (Rgas*T_calc)/(G_Vol-b) - (a*alpha) / (G_Vol^2 + 2*b*G_Vol - b^2);
+             
+             Tr := (T_calc+0.01) / G_Tc; alpha := (1 + kappa * (1 - SQRT(Tr)))^2;
+             P_t2 := (Rgas*(T_calc+0.01))/(G_Vol-b) - (a*alpha) / (G_Vol^2 + 2*b*G_Vol - b^2);
+             
+             Derivada := (P_t2 - P_t1) / 0.01;
+             T_calc := T_calc - (P_t1 - G_Pressao) / Derivada;
+             IF ABS(P_t1 - G_Pressao) < 0.0001 THEN BREAK; END;
+          END;
+          G_Temp := T_calc;
+       END;
+       
+       IF opcao_calc == 3 OR opcao_calc == 4 THEN
+          Tr := G_Temp / G_Tc; alpha := (1 + kappa * (1 - SQRT(Tr)))^2; a_alpha := a * alpha;
+          V_calc := Rgas * G_Temp / G_Pressao;
+          FOR iteracao FROM 1 TO 50 DO
+             Denom := V_calc^2 + 2*b*V_calc - b^2;
+             P_calc := (Rgas * G_Temp)/(V_calc - b) - a_alpha / Denom;
+             Derivada := -1*(Rgas*G_Temp)/((V_calc - b)^2) + (a_alpha * (2*V_calc + 2*b)) / (Denom^2);
+             V_calc := V_calc - (P_calc - G_Pressao) / Derivada;
+             IF ABS(P_calc - G_Pressao) < 0.00001 THEN BREAK; END;
+          END;
+          G_Vol := V_calc;
+       END;
+    END;
+
+    // --- 6. VIRIAL (Pitzer-Curl) ---
+    IF modelo == 6 THEN
+       
+       // Calc P (Virial Direto)
+       IF opcao_calc == 1 THEN 
+          Tr := G_Temp / G_Tc;
+          B0 := 0.083 - 0.422 / (Tr^1.6);
+          B1 := 0.139 - 0.172 / (Tr^4.2);
+          B_hat := (B0 + G_Omega * B1) * Rgas * G_Tc / G_Pc;
+          G_Pressao := (Rgas * G_Temp / G_Vol) * (1 + B_hat / G_Vol);
+       END;
+       
+       // Calc T (Solver Numérico - ADICIONADO!)
+       IF opcao_calc == 2 THEN
+           T_calc := G_Pressao * G_Vol / Rgas; // Chute inicial
+           
+           FOR iteracao FROM 1 TO 50 DO
+              // Cálculo P para T atual
+              Tr := T_calc / G_Tc;
+              B0 := 0.083 - 0.422 / (Tr^1.6);
+              B1 := 0.139 - 0.172 / (Tr^4.2);
+              B_hat := (B0 + G_Omega * B1) * Rgas * G_Tc / G_Pc;
+              P_t1 := (Rgas * T_calc / G_Vol) * (1 + B_hat / G_Vol);
+              
+              // Cálculo P para T + 0.01 (Perturbação)
+              Tr := (T_calc + 0.01) / G_Tc;
+              B0 := 0.083 - 0.422 / (Tr^1.6);
+              B1 := 0.139 - 0.172 / (Tr^4.2);
+              B_hat := (B0 + G_Omega * B1) * Rgas * G_Tc / G_Pc;
+              P_t2 := (Rgas * (T_calc+0.01) / G_Vol) * (1 + B_hat / G_Vol);
+              
+              // Newton
+              Derivada := (P_t2 - P_t1) / 0.01;
+              T_calc := T_calc - (P_t1 - G_Pressao) / Derivada;
+              
+              IF ABS(P_t1 - G_Pressao) < 0.0001 THEN BREAK; END;
+           END;
+           G_Temp := T_calc;
+       END;
+
+       // Calc V
+       IF opcao_calc == 3 OR opcao_calc == 4 THEN 
+           Tr := G_Temp / G_Tc;
+           B0 := 0.083 - 0.422 / (Tr^1.6);
+           B1 := 0.139 - 0.172 / (Tr^4.2);
+           B_hat := (B0 + G_Omega * B1) * Rgas * G_Tc / G_Pc;
+           G_Vol := (Rgas * G_Temp / G_Pressao) + B_hat;
+       END;
+    END;
+
+
+    // ==============================================================
+    // EXIBIÇÃO DE RESULTADOS
+    // ==============================================================
+
+    IF opcao_calc == 1 THEN MSGBOX("Pressão Calculada:\n" + G_Pressao + " bar"); END;
+    IF opcao_calc == 2 THEN MSGBOX("Temp Calculada:\n" + G_Temp + " K"); END;
+    IF opcao_calc == 3 THEN MSGBOX("Volume Calculado:\n" + G_Vol + " cm3/mol"); END;
+
+    // --- PROPRIEDADES (Z, BETA, KAPPA) ---
+    IF opcao_calc == 4 THEN
+       Z_factor := (G_Pressao * G_Vol) / (Rgas * G_Temp);
+
+       // Cálculo Numérico de Derivadas no ponto (T, V) para propriedades
+       P_base := G_Pressao;
+       
+       // 1. Derivada dP/dT (V constante)
+       T_orig := G_Temp;
+       G_Temp := T_orig + 0.001; // Perturbação T
+       
+       // Recalculo Rápido de P_Tplus para cada modelo
+       IF modelo==1 THEN P_Tplus:=Rgas*G_Temp/G_Vol; END;
+       IF modelo==2 THEN P_Tplus:=(Rgas*G_Temp)/(G_Vol-b)-a/(G_Vol^2); END;
+       IF modelo==3 THEN P_Tplus:=(Rgas*G_Temp)/(G_Vol-b)-a/(SQRT(G_Temp)*G_Vol*(G_Vol+b)); END;
+       IF modelo==4 THEN 
+          Tr:=G_Temp/G_Tc; alpha:=(1+m*(1-SQRT(Tr)))^2; 
+          P_Tplus:=(Rgas*G_Temp)/(G_Vol-b)-(a*alpha)/(G_Vol*(G_Vol+b)); 
+       END;
+       IF modelo==5 THEN 
+          Tr:=G_Temp/G_Tc; alpha:=(1+kappa*(1-SQRT(Tr)))^2; 
+          P_Tplus:=(Rgas*G_Temp)/(G_Vol-b)-(a*alpha)/(G_Vol^2+2*b*G_Vol-b^2);
+       END;
+       IF modelo==6 THEN
+          Tr:=G_Temp/G_Tc; B0:=0.083-0.422/(Tr^1.6); B1:=0.139-0.172/(Tr^4.2);
+          B_hat:=(B0+G_Omega*B1)*Rgas*G_Tc/G_Pc;
+          P_Tplus:=(Rgas*G_Temp/G_Vol)*(1+B_hat/G_Vol);
+       END;
+       G_Temp := T_orig; // Restaura
+       dPdT := (P_Tplus - P_base) / 0.001;
+
+       // 2. Derivada dP/dV (T constante)
+       V_orig := G_Vol;
+       G_Vol := V_orig + 0.001; // Perturbação V
+       
+       IF modelo==1 THEN P_Vplus:=Rgas*G_Temp/G_Vol; END;
+       IF modelo==2 THEN P_Vplus:=(Rgas*G_Temp)/(G_Vol-b)-a/(G_Vol^2); END;
+       IF modelo==3 THEN P_Vplus:=(Rgas*G_Temp)/(G_Vol-b)-a/(SQRT(G_Temp)*G_Vol*(G_Vol+b)); END;
+       IF modelo==4 THEN 
+          Tr:=G_Temp/G_Tc; alpha:=(1+m*(1-SQRT(Tr)))^2; 
+          P_Vplus:=(Rgas*G_Temp)/(G_Vol-b)-(a*alpha)/(G_Vol*(G_Vol+b)); 
+       END;
+       IF modelo==5 THEN 
+          Tr:=G_Temp/G_Tc; alpha:=(1+kappa*(1-SQRT(Tr)))^2; 
+          P_Vplus:=(Rgas*G_Temp)/(G_Vol-b)-(a*alpha)/(G_Vol^2+2*b*G_Vol-b^2); 
+       END;
+       IF modelo==6 THEN
+          // Virial B_hat depende apenas de T, então é constante aqui
+          Tr:=G_Temp/G_Tc; B0:=0.083-0.422/(Tr^1.6); B1:=0.139-0.172/(Tr^4.2);
+          B_hat:=(B0+G_Omega*B1)*Rgas*G_Tc/G_Pc;
+          P_Vplus:=(Rgas*G_Temp/G_Vol)*(1+B_hat/G_Vol);
+       END;
+       G_Vol := V_orig; // Restaura
+       dPdV := (P_Vplus - P_base) / 0.001;
+
+       // 3. Resultados
+       Beta_exp := (1.0 / G_Vol) * (-1.0 * dPdT / dPdV);
+       Kappa_comp := 1.0 / (G_Vol * -1.0 * dPdV);
+
+       MSGBOX("PROPRIEDADES:\n" + 
+              "Z (Comp): " + Z_factor + "\n" + 
+              "Beta (Exp): " + Beta_exp + "\n" +
+              "Kappa (Iso): " + Kappa_comp);
+    END;
+
+  END; // Fim WHILE
+END;

@@ -1,0 +1,160 @@
+EXPORT L_Temp, L_Tc, L_Pc, L_Omega, L_Vc, L_Vol;
+
+EXPORT TERMO_LIQ_PRO()
+BEGIN
+  LOCAL modelo, opcao_calc, iteracao;
+  LOCAL Rgas, Tr, Z_ra, V_sat, Termo_Vc, V_star;
+  LOCAL V_calc, T_calc, V_t1, V_t2, Derivada, Erro;
+  
+  // Variáveis COSTALD
+  LOCAL V_r0, V_delta, a1, a2, a3, a4, e, f;
+  LOCAL g, h, x;
+
+  Rgas := 83.1446; 
+
+  // Valores Padrão (Água)
+  IF L_Temp == 0  THEN L_Temp := 298.15; END;
+  IF L_Tc == 0    THEN L_Tc := 647.1; END;
+  IF L_Pc == 0    THEN L_Pc := 220.6; END;
+  IF L_Omega == 0 THEN L_Omega := 0.344; END;
+  IF L_Vc == 0    THEN L_Vc := 55.95; END; 
+  IF L_Vol == 0   THEN L_Vol := 18.0; END; // Volume líquido típico água
+
+  WHILE 1 DO
+    // --- MENU DE MODELOS ---
+    CHOOSE(modelo, "TERMO LIQUID PRO", 
+           "1. Rackett (Estimado)",
+           "2. Rackett (Vc Real)",
+           "3. COSTALD (Hankinson-Thomson)",
+           "4. Sair");
+           
+    IF modelo == 0 OR modelo == 4 THEN BREAK; END;
+
+    // --- MENU DE OBJETIVO ---
+    CHOOSE(opcao_calc, "O que calcular?",
+           "1. Calcular Volume (V)",
+           "2. Calcular Temperatura (T)");
+           
+    IF opcao_calc == 0 THEN CONTINUE; END;
+
+    // --- ENTRADA DE DADOS ---
+    // Se for calcular V, pede T. Se for calcular T, pede V.
+    IF opcao_calc == 1 THEN
+       IF modelo == 2 THEN
+          IF INPUT({L_Temp, L_Tc, L_Pc, L_Omega, L_Vc}, "Dados (Calc V)", {"T","Tc","Pc","w","Vc"})==0 THEN CONTINUE; END;
+       ELSE
+          IF INPUT({L_Temp, L_Tc, L_Pc, L_Omega}, "Dados (Calc V)", {"T","Tc","Pc","w"})==0 THEN CONTINUE; END;
+       END;
+    END;
+
+    IF opcao_calc == 2 THEN
+       IF modelo == 2 THEN
+          IF INPUT({L_Vol, L_Tc, L_Pc, L_Omega, L_Vc}, "Dados (Calc T)", {"V","Tc","Pc","w","Vc"})==0 THEN CONTINUE; END;
+       ELSE
+          IF INPUT({L_Vol, L_Tc, L_Pc, L_Omega}, "Dados (Calc T)", {"V","Tc","Pc","w"})==0 THEN CONTINUE; END;
+       END;
+    END;
+
+    // ===============================================
+    // LÓGICA DE CÁLCULO
+    // ===============================================
+
+    // --- 1. CALCULAR VOLUME (DIRETO) ---
+    IF opcao_calc == 1 THEN
+       Tr := L_Temp / L_Tc;
+       IF Tr >= 1 THEN MSGBOX("Erro: T >= Tc (Gás/SC)"); CONTINUE; END;
+
+       // RACKETT ESTIMADO
+       IF modelo == 1 THEN
+          Z_ra := 0.29056 - 0.08775 * L_Omega;
+          Termo_Vc := (Rgas * L_Tc) / L_Pc;
+          L_Vol := Termo_Vc * (Z_ra ^ (1 + (1 - Tr)^(2/7)));
+       END;
+
+       // RACKETT REAL
+       IF modelo == 2 THEN
+          Z_ra := 0.29056 - 0.08775 * L_Omega;
+          L_Vol := L_Vc * (Z_ra ^ ((1 - Tr)^(2/7)));
+       END;
+
+       // COSTALD
+       IF modelo == 3 THEN
+          V_star := (Rgas * L_Tc / L_Pc) * (0.285168 + 0.06379 * L_Omega);
+          x := 1 - Tr;
+          a1:=-1.52816; a2:=1.43907; a3:=-0.81446; a4:=0.190454;
+          V_r0 := 1 + a1*(x^(1/3)) + a2*(x^(2/3)) + a3*x + a4*(x^(4/3));
+          e:=-0.296123; f:=0.386914; g:=-0.0427258; h:=-0.0480645;
+          V_delta := (e + f*Tr + g*Tr^2 + h*Tr^3) / (Tr - 1.00001);
+          L_Vol := V_star * V_r0 * (1 - L_Omega * V_delta);
+       END;
+       
+       MSGBOX("Volume Líquido:\n" + L_Vol + " cm3/mol");
+    END;
+
+    // --- 2. CALCULAR TEMPERATURA (SOLVER) ---
+    IF opcao_calc == 2 THEN
+       // Chute inicial seguro: 0.6 * Tc (Líquido morno)
+       T_calc := L_Tc * 0.6; 
+       
+       FOR iteracao FROM 1 TO 50 DO
+           // --- PASSO 1: Calc V na temperatura T_calc ---
+           Tr := T_calc / L_Tc;
+           
+           // Evita erro matemático se o solver tentar passar do ponto crítico
+           IF Tr >= 0.999 THEN T_calc := L_Tc * 0.99; Tr := 0.99; END;
+
+           IF modelo == 1 THEN // Rackett Est
+              Z_ra := 0.29056 - 0.08775 * L_Omega;
+              Termo_Vc := (Rgas * L_Tc) / L_Pc;
+              V_t1 := Termo_Vc * (Z_ra ^ (1 + (1 - Tr)^(2/7)));
+           END;
+           IF modelo == 2 THEN // Rackett Real
+              Z_ra := 0.29056 - 0.08775 * L_Omega;
+              V_t1 := L_Vc * (Z_ra ^ ((1 - Tr)^(2/7)));
+           END;
+           IF modelo == 3 THEN // COSTALD
+              V_star := (Rgas * L_Tc / L_Pc) * (0.285168 + 0.06379 * L_Omega);
+              x := 1 - Tr;
+              a1:=-1.52816; a2:=1.43907; a3:=-0.81446; a4:=0.190454;
+              V_r0 := 1 + a1*(x^(1/3)) + a2*(x^(2/3)) + a3*x + a4*(x^(4/3));
+              e:=-0.296123; f:=0.386914; g:=-0.0427258; h:=-0.0480645;
+              V_delta := (e + f*Tr + g*Tr^2 + h*Tr^3) / (Tr - 1.00001);
+              V_t1 := V_star * V_r0 * (1 - L_Omega * V_delta);
+           END;
+
+           // --- PASSO 2: Calc V na temperatura T_calc + 0.01 ---
+           // (Derivada Numérica)
+           LOCAL T_plus; T_plus := T_calc + 0.01;
+           Tr := T_plus / L_Tc;
+           
+           IF modelo == 1 THEN 
+              V_t2 := Termo_Vc * (Z_ra ^ (1 + (1 - Tr)^(2/7))); 
+           END;
+           IF modelo == 2 THEN 
+              V_t2 := L_Vc * (Z_ra ^ ((1 - Tr)^(2/7))); 
+           END;
+           IF modelo == 3 THEN
+              x := 1 - Tr;
+              V_r0 := 1 + a1*(x^(1/3)) + a2*(x^(2/3)) + a3*x + a4*(x^(4/3));
+              V_delta := (e + f*Tr + g*Tr^2 + h*Tr^3) / (Tr - 1.00001);
+              V_t2 := V_star * V_r0 * (1 - L_Omega * V_delta);
+           END;
+
+           // --- PASSO 3: Newton-Raphson ---
+           Derivada := (V_t2 - V_t1) / 0.01;
+           
+           // Proteção contra divisão por zero (muito raro aqui)
+           IF Derivada == 0 THEN Derivada := 0.00001; END;
+           
+           Erro := V_t1 - L_Vol;
+           T_calc := T_calc - (Erro / Derivada);
+           
+           IF ABS(Erro) < 0.0001 THEN BREAK; END;
+       END; // Fim Loop Solver
+
+       L_Temp := T_calc;
+       MSGBOX("Temp Encontrada:\n" + L_Temp + " K");
+    END;
+
+  END; // Fim While
+END;

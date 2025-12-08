@@ -1,0 +1,123 @@
+// ==========================================================
+// TERMO GEN PLUS - ASSISTENTE DE GRÁFICOS
+// Modos: Substância Pura & Misturas (Regra de Kay)
+// ==========================================================
+
+// Variáveis Globais de Estado
+EXPORT G_Pressao, G_Temp;
+EXPORT G_Tc, G_Pc, G_Omega; // Para Puro
+EXPORT M_y1;                // Fração molar mistura
+EXPORT M_Tc1, M_Pc1, M_w1;  // Comp 1
+EXPORT M_Tc2, M_Pc2, M_w2;  // Comp 2
+
+EXPORT TERMO_GEN_PLUS()
+BEGIN
+  // Variáveis Locais
+  LOCAL Rgas, Tr, Pr;
+  LOCAL Z0, Z1, Z_final;
+  LOCAL V_real, V_ideal;
+  LOCAL opcao_menu, modo_fluido;
+  
+  // Variáveis Auxiliares para Kay
+  LOCAL Tpc, Ppc, w_mix, y2;
+  
+  Rgas := 83.1446; 
+
+  // Valores Padrão (Água / Metano+Etano)
+  IF G_Pressao == 0 THEN G_Pressao := 50.0; END;
+  IF G_Temp == 0    THEN G_Temp := 300.0; END;
+  
+  // Padrão Puro (Água)
+  IF G_Tc == 0      THEN G_Tc := 647.1; END;
+  IF G_Pc == 0      THEN G_Pc := 220.6; END;
+  IF G_Omega == 0   THEN G_Omega := 0.344; END;
+  
+  // Padrão Mistura (Metano+Etano)
+  IF M_y1 == 0  THEN M_y1 := 0.7; END;
+  IF M_Tc1 == 0 THEN M_Tc1 := 190.6; M_Pc1 := 45.99; M_w1 := 0.011; END;
+  IF M_Tc2 == 0 THEN M_Tc2 := 305.3; M_Pc2 := 48.72; M_w2 := 0.099; END;
+
+  WHILE 1 DO
+    // MENU PRINCIPAL
+    CHOOSE(modo_fluido, "LEE-KESLER: Tipo de Fluido", 
+           "1. Substância Pura",
+           "2. Mistura (Regra de Kay)",
+           "3. Sair");
+           
+    IF modo_fluido == 0 OR modo_fluido == 3 THEN BREAK; END;
+    
+    // ===============================================
+    // LÓGICA DE ENTRADA DE DADOS
+    // ===============================================
+    
+    // --- CASO 1: PURO ---
+    IF modo_fluido == 1 THEN
+       IF INPUT({G_Pressao, G_Temp, G_Tc, G_Pc, G_Omega}, "Dados Puro", 
+                {"P(bar)", "T(K)", "Tc", "Pc", "Omega"}) == 0 THEN CONTINUE; END;
+       
+       // As propriedades críticas de uso são as próprias
+       Tpc := G_Tc;
+       Ppc := G_Pc;
+       w_mix := G_Omega;
+    END;
+
+    // --- CASO 2: MISTURA (KAY) ---
+    IF modo_fluido == 2 THEN
+       // Tela 1: Sistema e Comp 1
+       IF INPUT({G_Pressao, G_Temp, M_y1, M_Tc1, M_Pc1, M_w1}, "Mistura: Comp 1", 
+                {"P(bar)", "T(K)", "y1 (molar)", "Tc1", "Pc1", "w1"}) == 0 THEN CONTINUE; END;
+       
+       y2 := 1 - M_y1;
+       
+       // Tela 2: Comp 2
+       IF INPUT({M_Tc2, M_Pc2, M_w2}, "Mistura: Comp 2 (y2=" + y2 + ")", 
+                {"Tc2", "Pc2", "w2"}) == 0 THEN CONTINUE; END;
+       
+       // --- CÁLCULO DA REGRA DE KAY ---
+       // Pseudocríticas = Média Linear
+       Tpc := M_y1 * M_Tc1 + y2 * M_Tc2;
+       Ppc := M_y1 * M_Pc1 + y2 * M_Pc2;
+       w_mix := M_y1 * M_w1 + y2 * M_w2;
+       
+       MSGBOX("PSEUDOCRÍTICAS (KAY):\n" +
+              "Tpc: " + Tpc + " K\n" +
+              "Ppc: " + Ppc + " bar\n" +
+              "w_mix: " + w_mix);
+    END;
+
+    // ===============================================
+    // CÁLCULO DAS REDUZIDAS E GRÁFICO
+    // ===============================================
+
+    Tr := G_Temp / Tpc;
+    Pr := G_Pressao / Ppc;
+
+    // Mostra dados para o usuário ir ao papel
+    MSGBOX("VÁ AO GRÁFICO (Lee-Kesler):\n" +
+           "---------------------\n" +
+           "Tr = " + Tr + "\n" +
+           "Pr = " + Pr + "\n" +
+           "---------------------\n" +
+           "Busque Z0 e Z1 no gráfico\n" + 
+           "usando estes valores.");
+
+    // Leitura do usuário
+    Z0 := 0.8; Z1 := 0.05; // Chutes padrão para agilizar
+    IF INPUT({Z0, Z1}, "Leitura do Gráfico", 
+             {"Valor de Z0", "Valor de Z1"}) == 0 THEN CONTINUE; END;
+
+    // Cálculo Final (Z = Z0 + w*Z1)
+    // Usa o w_mix calculado por Kay ou o w puro
+    Z_final := Z0 + (w_mix * Z1);
+    
+    V_real := (Z_final * Rgas * G_Temp) / G_Pressao;
+    V_ideal := (Rgas * G_Temp) / G_Pressao;
+
+    MSGBOX("RESULTADO FINAL:\n" + 
+           "Z Mistura: " + Z_final + "\n" +
+           "Vol Real:  " + V_real + " cm3/mol\n" +
+           "--------------------\n" + 
+           "Correção (w*Z1): " + (w_mix*Z1));
+           
+  END; // Fim While
+END;

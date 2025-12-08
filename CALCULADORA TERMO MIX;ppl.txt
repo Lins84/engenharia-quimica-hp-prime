@@ -1,0 +1,151 @@
+// ==========================================================
+// TERMO MIX - MISTURAS BINÁRIAS (SRK & PR)
+// Calcula Volume e Fator Z da Mistura
+// ==========================================================
+
+// Variáveis Globais (Salvam o estado)
+EXPORT M_P, M_T;              // Condições do Sistema
+EXPORT M_Tc1, M_Pc1, M_w1, M_x1; // Componente 1
+EXPORT M_Tc2, M_Pc2, M_w2;       // Componente 2 (x2 é calculado)
+EXPORT M_kij;                 // Parâmetro de Interação
+
+EXPORT TERMO_MIX()
+BEGIN
+  LOCAL modelo, x2;
+  LOCAL Rgas, Tr1, Tr2;
+  LOCAL m1, m2, kappa1, kappa2, alpha1, alpha2;
+  LOCAL a1, b1, a2, b2;
+  LOCAL a12, a_mix, b_mix;
+  LOCAL A_dim, B_dim; // Adimensionais para a Cúbica
+  LOCAL V_calc, P_calc, Derivada, Erro, iteracao;
+  LOCAL Z_mix, Denom_PR;
+
+  Rgas := 83.1446;
+
+  // Valores Padrão (Ex: Metano + Etano)
+  IF M_P == 0   THEN M_P := 50.0; END;
+  IF M_T == 0   THEN M_T := 300.0; END;
+  
+  // Comp 1 (Ex: Metano)
+  IF M_Tc1 == 0 THEN M_Tc1 := 190.6; END;
+  IF M_Pc1 == 0 THEN M_Pc1 := 45.99; END;
+  IF M_w1 == 0  THEN M_w1 := 0.011; END;
+  IF M_x1 == 0  THEN M_x1 := 0.5; END; // 50% molar
+
+  // Comp 2 (Ex: Etano)
+  IF M_Tc2 == 0 THEN M_Tc2 := 305.3; END;
+  IF M_Pc2 == 0 THEN M_Pc2 := 48.72; END;
+  IF M_w2 == 0  THEN M_w2 := 0.099; END;
+  
+  // Interação (Geralmente pequeno)
+  IF M_kij == 0 THEN M_kij := 0.0; END;
+
+  WHILE 1 DO
+    CHOOSE(modelo, "MISTURA BINÁRIA: Modelo",
+           "1. SRK (Soave-Redlich-Kwong)",
+           "2. Peng-Robinson (PR)",
+           "3. Sair");
+           
+    IF modelo == 0 OR modelo == 3 THEN BREAK; END;
+
+    // --- TELA 1: DADOS DO SISTEMA E COMP 1 ---
+    IF INPUT({M_P, M_T, M_x1, M_kij, M_Tc1, M_Pc1, M_w1}, 
+             "Dados Sistema & Comp 1", 
+             {"P(bar)","T(K)","x1 (Molar)","k_ij","Tc1","Pc1","w1"}) == 0 THEN CONTINUE; END;
+
+    // Cálculo automático de x2
+    x2 := 1 - M_x1;
+
+    // --- TELA 2: DADOS DO COMP 2 ---
+    IF INPUT({M_Tc2, M_Pc2, M_w2}, 
+             "Dados Comp 2 (x2=" + x2 + ")", 
+             {"Tc2","Pc2","w2"}) == 0 THEN CONTINUE; END;
+
+    // ==========================================
+    // CÁLCULO DOS PARÂMETROS PUROS (a_i, b_i)
+    // ==========================================
+    
+    Tr1 := M_T / M_Tc1;
+    Tr2 := M_T / M_Tc2;
+
+    // --- MODELO SRK ---
+    IF modelo == 1 THEN
+       // Comp 1
+       m1 := 0.480 + 1.574*M_w1 - 0.176*M_w1^2;
+       alpha1 := (1 + m1 * (1 - SQRT(Tr1)))^2;
+       a1 := (0.42748 * (Rgas*M_Tc1)^2 / M_Pc1) * alpha1;
+       b1 := 0.08664 * (Rgas*M_Tc1) / M_Pc1;
+
+       // Comp 2
+       m2 := 0.480 + 1.574*M_w2 - 0.176*M_w2^2;
+       alpha2 := (1 + m2 * (1 - SQRT(Tr2)))^2;
+       a2 := (0.42748 * (Rgas*M_Tc2)^2 / M_Pc2) * alpha2;
+       b2 := 0.08664 * (Rgas*M_Tc2) / M_Pc2;
+    END;
+
+    // --- MODELO PR ---
+    IF modelo == 2 THEN
+       // Comp 1
+       kappa1 := 0.37464 + 1.54226*M_w1 - 0.26992*M_w1^2;
+       alpha1 := (1 + kappa1 * (1 - SQRT(Tr1)))^2;
+       a1 := (0.45724 * (Rgas*M_Tc1)^2 / M_Pc1) * alpha1;
+       b1 := 0.07780 * (Rgas*M_Tc1) / M_Pc1;
+
+       // Comp 2
+       kappa2 := 0.37464 + 1.54226*M_w2 - 0.26992*M_w2^2;
+       alpha2 := (1 + kappa2 * (1 - SQRT(Tr2)))^2;
+       a2 := (0.45724 * (Rgas*M_Tc2)^2 / M_Pc2) * alpha2;
+       b2 := 0.07780 * (Rgas*M_Tc2) / M_Pc2;
+    END;
+
+    // ==========================================
+    // REGRAS DE MISTURA (MIXING RULES)
+    // ==========================================
+    
+    // 1. b_mix (Linear)
+    b_mix := M_x1 * b1 + x2 * b2;
+
+    // 2. a_mix (Quadrática com kij)
+    // a_mix = x1*x1*a1 + 2*x1*x2*a12 + x2*x2*a2
+    // Onde a12 = sqrt(a1*a2)*(1-kij)
+    a12 := SQRT(a1 * a2) * (1 - M_kij);
+    a_mix := (M_x1^2 * a1) + (2 * M_x1 * x2 * a12) + (x2^2 * a2);
+
+    // ==========================================
+    // SOLVER DE VOLUME (NEWTON-RAPHSON)
+    // ==========================================
+    // Usamos os parâmetros a_mix e b_mix como se fosse um fluido puro
+    
+    V_calc := Rgas * M_T / M_P; // Chute inicial (Gás Ideal)
+
+    FOR iteracao FROM 1 TO 50 DO
+       
+       IF modelo == 1 THEN // SRK Mix
+          P_calc := (Rgas*M_T)/(V_calc - b_mix) - a_mix/(V_calc*(V_calc + b_mix));
+          Derivada := -1*(Rgas*M_T)/((V_calc - b_mix)^2) + (a_mix * (2*V_calc + b_mix)) / ((V_calc * (V_calc + b_mix))^2);
+       END;
+
+       IF modelo == 2 THEN // PR Mix
+          Denom_PR := V_calc^2 + 2*b_mix*V_calc - b_mix^2;
+          P_calc := (Rgas*M_T)/(V_calc - b_mix) - a_mix / Denom_PR;
+          Derivada := -1*(Rgas*M_T)/((V_calc - b_mix)^2) + (a_mix * (2*V_calc + 2*b_mix)) / (Denom_PR^2);
+       END;
+
+       Erro := P_calc - M_P;
+       V_calc := V_calc - (Erro / Derivada);
+       
+       IF ABS(Erro) < 0.00001 THEN BREAK; END;
+    END;
+    
+    // Resultados Finais
+    Z_mix := (M_P * V_calc) / (Rgas * M_T);
+
+    MSGBOX("RESULTADOS MISTURA:\n" +
+           "V mix: " + V_calc + " cm3/mol\n" +
+           "Z mix: " + Z_mix + "\n" + 
+           "----------------\n" +
+           "a_mix: " + a_mix + "\n" + 
+           "b_mix: " + b_mix);
+           
+  END;
+END;
