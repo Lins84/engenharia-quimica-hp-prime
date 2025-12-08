@@ -8,6 +8,10 @@ Designed for Chemical Engineers, Students, and Researchers, this suite runs nati
 
 The suite consists of 4 independent but complementary applications:
 
+
+<img width="320" height="240" alt="Menu TERMOTITANIUM" src="https://github.com/user-attachments/assets/049747ad-def5-4660-a04a-98c16af968f5" />
+
+
 ### 1. TERMO_TITANIUM (Pure Fluids EOS)
 The core application for P-V-T calculations of pure substances.
 * **Equations of State (EOS):** Ideal Gas, Van der Waals, Redlich-Kwong (RK), Soave-Redlich-Kwong (SRK), Peng-Robinson (PR), and Virial (Pitzer-Curl truncated).
@@ -17,6 +21,11 @@ The core application for P-V-T calculations of pure substances.
     * Isobaric Thermal Expansivity ($\beta$)
     * Isothermal Compressibility ($\kappa$)
 
+<img width="320" height="240" alt="BETA KAPPA" src="https://github.com/user-attachments/assets/3da270b5-b604-42d3-8a0c-63c2adaf6482" />      <img width="320" height="240" alt="KAPPA3" src="https://github.com/user-attachments/assets/c7bf8d8e-c17a-4b79-bdca-dbae613020f1" />
+
+
+
+
 ### 2. TERMO_MIX (Binary Mixtures)
 Dedicated to Vapor-Liquid Equilibrium (VLE) parameters for binary mixtures.
 * **Models:** SRK and Peng-Robinson.
@@ -25,6 +34,11 @@ Dedicated to Vapor-Liquid Equilibrium (VLE) parameters for binary mixtures.
     * Accepts Binary Interaction Parameter ($k_{ij}$).
     * Calculates Mixture parameters ($a_{mix}$, $b_{mix}$).
     * Outputs Mixture Volume ($V_{mix}$) and Compressibility ($Z_{mix}$).
+ 
+
+<img width="320" height="240" alt="MIX3" src="https://github.com/user-attachments/assets/b29ce1f1-ef91-4dcc-a493-77f6d7d2eb29" /> <img width="320" height="240" alt="MIX2" src="https://github.com/user-attachments/assets/c7b5887b-44a5-424f-8377-6d6b036ad162" />
+
+
 
 ### 3. TERMO_LIQ_PRO (Liquid Density)
  specialized tool for accurate liquid density/volume estimations.
@@ -34,10 +48,24 @@ Dedicated to Vapor-Liquid Equilibrium (VLE) parameters for binary mixtures.
     * **COSTALD:** (Hankinson-Thomson) The industry standard for compressed liquid density.
 * **Reverse Solver:** Can calculate the Saturation Temperature given a specific Liquid Volume.
 
+
+<img width="320" height="240" alt="LIQUID" src="https://github.com/user-attachments/assets/6e372fc6-b82b-4748-90eb-56ee3efe3179" /> <img width="320" height="240" alt="image" src="https://github.com/user-attachments/assets/dbecab08-72d8-4b88-9ff3-23a41a713051" />
+
+
+
+
 ### 4. TERMO_GEN_PLUS (Generalized Charts)
 A helper tool for using Lee-Kesler Generalized Compressibility Charts manually.
 * **Pure Fluids:** Calculates Reduced Temperature ($Tr$) and Pressure ($Pr$).
 * **Mixtures:** Implements **Kay's Rule** to calculate Pseudocritical Properties ($T_{pc}, P_{pc}$) and provides the correct coordinates for chart reading.
+
+
+
+<img width="320" height="240" alt="image" src="https://github.com/user-attachments/assets/414b5c7a-dabc-40e1-96a5-566d8593201a" /><img width="320" height="240" alt="image" src="https://github.com/user-attachments/assets/dcce9c64-59dc-4dca-9ce1-fcb250c3f2a7" /><img width="320" height="240" alt="image" src="https://github.com/user-attachments/assets/ebdc1b89-45cb-4e9a-aa14-40ea3790dde5" />
+
+
+
+
 
 ---
 
