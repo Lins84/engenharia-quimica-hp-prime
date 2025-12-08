@@ -1,46 +1,70 @@
 # HP Prime Thermodynamics Suite 🧪🔥
 
-Uma coleção completa de aplicativos em PPL (HP Prime Programming Language) para Engenharia Química e Termodinâmica.
+A comprehensive suite of high-precision Thermodynamic applications developed for the HP Prime Graphing Calculator using PPL (Prime Programming Language).
 
-## 📦 Conteúdo do Pacote
+Designed for Chemical Engineers, Students, and Researchers, this suite runs natively on the calculator (no Python required) ensuring maximum speed and compatibility.
 
-Este repositório contém 4 aplicativos independentes:
+## 📦 Included Applications
 
-1.  **TERMO_TITANIUM**: Cálculos P-V-T para substâncias puras.
-    * **Modelos:** Gás Ideal, Van der Waals, RK, SRK, Peng-Robinson, Virial (Pitzer-Curl).
-    * **Extras:** Calcula Propriedades Derivadas (Fator Z, Compressibilidade, Expansividade).
-    * **Solver:** Calcula Temperatura (T) via Newton-Raphson para todas as equações cúbicas.
+The suite consists of 4 independent but complementary applications:
 
-2.  **TERMO_LIQ_PRO**: Focado em Líquidos Saturados/Comprimidos.
-    * **Modelos:** Rackett (Estimado via Yamada-Gunn), Rackett (com Vc real) e COSTALD (Hankinson-Thomson).
-    * **Função:** Calcula Volume dado T, ou Temperatura dado V (Solver Reverso).
+### 1. TERMO_TITANIUM (Pure Fluids EOS)
+The core application for P-V-T calculations of pure substances.
+* **Equations of State (EOS):** Ideal Gas, Van der Waals, Redlich-Kwong (RK), Soave-Redlich-Kwong (SRK), Peng-Robinson (PR), and Virial (Pitzer-Curl truncated).
+* **Solver:** Includes a robust Newton-Raphson numerical solver to calculate **Temperature** (given P and V) or **Volume** (given P and T) for cubic equations, avoiding complex root ambiguity.
+* **Advanced Properties:** Calculates Derivative Properties:
+    * Compressibility Factor ($Z$)
+    * Isobaric Thermal Expansivity ($\beta$)
+    * Isothermal Compressibility ($\kappa$)
 
-3.  **TERMO_MIX**: Misturas Binárias.
-    * **Modelos:** SRK e Peng-Robinson.
-    * **Método:** Regras de Mistura de van der Waals (1-fluid) com parâmetro de interação binária ($k_{ij}$).
-    * **Saída:** Volume molar e Fator Z da mistura.
+### 2. TERMO_MIX (Binary Mixtures)
+Dedicated to Vapor-Liquid Equilibrium (VLE) parameters for binary mixtures.
+* **Models:** SRK and Peng-Robinson.
+* **Methodology:** Uses **van der Waals 1-fluid mixing rules**.
+* **Features:**
+    * Accepts Binary Interaction Parameter ($k_{ij}$).
+    * Calculates Mixture parameters ($a_{mix}$, $b_{mix}$).
+    * Outputs Mixture Volume ($V_{mix}$) and Compressibility ($Z_{mix}$).
 
-4.  **TERMO_GEN_PLUS**: Assistente para Gráficos Generalizados.
-    * **Método:** Lee-Kesler.
-    * **Função:** Calcula propriedades Pseudocríticas (Regra de Kay) para misturas e entrega $Tr$ e $Pr$ prontos para leitura em gráficos.
+### 3. TERMO_LIQ_PRO (Liquid Density)
+ specialized tool for accurate liquid density/volume estimations.
+* **Models:**
+    * **Rackett (Estimated):** Uses Yamada-Gunn modification (requires only $T_c, P_c, \omega$).
+    * **Rackett (Real $V_c$):** Uses experimental Critical Volume for higher precision.
+    * **COSTALD:** (Hankinson-Thomson) The industry standard for compressed liquid density.
+* **Reverse Solver:** Can calculate the Saturation Temperature given a specific Liquid Volume.
 
-## 🚀 Como Instalar
-
-1.  Baixe o "HP Connectivity Kit" no seu computador.
-2.  Abra o arquivo `.ppl` deste repositório que deseja instalar.
-3.  Copie todo o código texto.
-4.  No Connectivity Kit, clique com o botão direito em "Programas" > "Novo Programa".
-5.  Dê o nome exato do App (ex: `TERMO_TITANIUM`).
-6.  Cole o código no editor e salve (ícone de disquete ou envie para a calculadora).
-
-## 📖 Como Usar
-
-Ao abrir qualquer um dos apps, você verá um menu principal.
-* **Variáveis:** Os apps usam variáveis globais (`EXPORT`) para que os dados persistam entre cálculos (ex: se você digitou a Tc da água uma vez, ela fica salva para o próximo cálculo).
-* **Solvers:** Para cálculos complexos (como Volume em PR ou Temperatura em SRK), o app usa o método de Newton-Raphson. Se o cálculo demorar 1 segundo, é normal.
-
-## ⚠️ Aviso
-Estes programas foram desenvolvidos para fins educacionais e de engenharia prática. Sempre verifique os resultados críticos.
+### 4. TERMO_GEN_PLUS (Generalized Charts)
+A helper tool for using Lee-Kesler Generalized Compressibility Charts manually.
+* **Pure Fluids:** Calculates Reduced Temperature ($Tr$) and Pressure ($Pr$).
+* **Mixtures:** Implements **Kay's Rule** to calculate Pseudocritical Properties ($T_{pc}, P_{pc}$) and provides the correct coordinates for chart reading.
 
 ---
-*Desenvolvido em colaboração com Especialista HP Prime.*
+
+## 🚀 Installation
+
+1.  Download the **HP Connectivity Kit** from the official HP website.
+2.  Connect your HP Prime calculator to your PC via USB.
+3.  Download the `.ppl` files from this repository.
+4.  Open the `.ppl` files (as text) and copy the code.
+5.  In the Connectivity Kit:
+    * Right-click on **"Programs"** (or "Program Library").
+    * Select **"New Program"**.
+    * Name it exactly as the file (e.g., `TERMO_TITANIUM`).
+    * Paste the code and save.
+6.  The App will appear in your calculator's **Program Catalog** (`Shift` + `1`).
+
+## 📖 How to Use
+
+1.  Press `Shift` + `1` (Program) on your calculator.
+2.  Select the desired App (e.g., `TERMO_TITANIUM`) and press **Run**.
+3.  **Menu Navigation:** Use the touchscreen or numbers to select Models and Calculation Objectives.
+4.  **Inputs:** The apps use Global Variables (`EXPORT`). Once you enter data for a substance (e.g., Water: $Tc=647.1, Pc=220.6$), it stays saved in memory for subsequent calculations, saving you typing time.
+5.  **Escape:** Press `Esc` in menus to go back or exit.
+
+## ⚠️ Disclaimer
+
+These programs are intended for educational and engineering reference purposes. While rigorous testing has been conducted against standard literature values (Perry's Handbook, NIST), the author assumes no responsibility for errors in critical professional applications. Always verify results.
+
+---
+*Developed by [Your Name/Username]*
