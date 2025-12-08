@@ -67,4 +67,4 @@ A helper tool for using Lee-Kesler Generalized Compressibility Charts manually.
 These programs are intended for educational and engineering reference purposes. While rigorous testing has been conducted against standard literature values (Perry's Handbook, NIST), the author assumes no responsibility for errors in critical professional applications. Always verify results.
 
 ---
-*Developed by Leonardo Lins/Lins84/O cara da Prime*
+*Developed by Leonardo Lins*
