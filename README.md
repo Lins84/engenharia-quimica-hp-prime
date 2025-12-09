@@ -94,7 +94,8 @@ A helper tool for using Lee-Kesler Generalized Compressibility Charts manually.
 I recently started a channel dedicated to HP Prime engineering tutorials.
 **Subscribe now to be the first to know when the full video manual for this suite is released!**
 
-[**🔗 Click here to Subscribe**]([SEU_LINK_DO_YOUTUBE_AQUI](https://www.youtube.com/@ocaradaprime))
+[**🔗 Click here to Subscribe**](https://www.youtube.com/@ocaradaprime)
+
 
 ## ⚠️ Disclaimer
 
