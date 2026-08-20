@@ -73,7 +73,10 @@ BEGIN
 
        // RACKETT REAL
        IF modelo == 2 THEN
-          Z_ra := 0.29056 - 0.08775 * L_Omega;
+          // Zc real, consistente com o Vc informado (Pc*Vc/(R*Tc)) -- NÃO usar o
+          // Z_ra genérico de Yamada-Gunn aqui, que é calibrado para uso com
+          // Termo_Vc=(R*Tc/Pc), não com o Vc experimental.
+          Z_ra := (L_Pc * L_Vc) / (Rgas * L_Tc);
           L_Vol := L_Vc * (Z_ra ^ ((1 - Tr)^(2/7)));
        END;
 
@@ -109,7 +112,8 @@ BEGIN
               V_t1 := Termo_Vc * (Z_ra ^ (1 + (1 - Tr)^(2/7)));
            END;
            IF modelo == 2 THEN // Rackett Real
-              Z_ra := 0.29056 - 0.08775 * L_Omega;
+              // Zc real, consistente com o Vc informado (ver comentário no bloco de Volume)
+              Z_ra := (L_Pc * L_Vc) / (Rgas * L_Tc);
               V_t1 := L_Vc * (Z_ra ^ ((1 - Tr)^(2/7)));
            END;
            IF modelo == 3 THEN // COSTALD
