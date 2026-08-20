@@ -100,6 +100,7 @@ BEGIN
              P_calc := (Rgas * G_Temp) / (V_calc - b) - a / (V_calc*V_calc);
              Derivada := -1*(Rgas*G_Temp)/((V_calc-b)^2) + (2*a)/(V_calc^3);
              V_calc := V_calc - (P_calc - G_Pressao) / Derivada;
+             IF V_calc <= b THEN V_calc := b * 1.001; END; // evita cruzar o polo V=b
              IF ABS(P_calc - G_Pressao) < 0.00001 THEN BREAK; END;
           END;
           G_Vol := V_calc;
@@ -132,6 +133,7 @@ BEGIN
              P_calc := (Rgas*G_Temp)/(V_calc-b) - a/(SQRT(G_Temp)*V_calc*(V_calc+b));
              Derivada := -1*(Rgas*G_Temp)/((V_calc - b)^2) + (a / SQRT(G_Temp)) * (2*V_calc + b) / ((V_calc * (V_calc + b))^2);
              V_calc := V_calc - (P_calc - G_Pressao) / Derivada;
+             IF V_calc <= b THEN V_calc := b * 1.001; END; // evita cruzar o polo V=b
              IF ABS(P_calc - G_Pressao) < 0.00001 THEN BREAK; END;
           END;
           G_Vol := V_calc;
@@ -174,6 +176,7 @@ BEGIN
              P_calc := (Rgas * G_Temp)/(V_calc - b) - a_alpha/(V_calc*(V_calc + b));
              Derivada := -1*(Rgas*G_Temp)/((V_calc - b)^2) + (a_alpha * (2*V_calc + b)) / ((V_calc * (V_calc + b))^2);
              V_calc := V_calc - (P_calc - G_Pressao) / Derivada;
+             IF V_calc <= b THEN V_calc := b * 1.001; END; // evita cruzar o polo V=b
              IF ABS(P_calc - G_Pressao) < 0.00001 THEN BREAK; END;
           END;
           G_Vol := V_calc;
@@ -216,6 +219,7 @@ BEGIN
              P_calc := (Rgas * G_Temp)/(V_calc - b) - a_alpha / Denom;
              Derivada := -1*(Rgas*G_Temp)/((V_calc - b)^2) + (a_alpha * (2*V_calc + 2*b)) / (Denom^2);
              V_calc := V_calc - (P_calc - G_Pressao) / Derivada;
+             IF V_calc <= b THEN V_calc := b * 1.001; END; // evita cruzar o polo V=b
              IF ABS(P_calc - G_Pressao) < 0.00001 THEN BREAK; END;
           END;
           G_Vol := V_calc;
